@@ -1,0 +1,229 @@
+package com.scripting.flexcup;
+
+import java_cup.runtime.*;
+import java.util.ArrayList;
+import java.util.List;
+import com.scripting.models.*;
+import com.scripting.frontend.Principal;
+import com.scripting.manejadores.Manejador;
+
+import java.util.LinkedList;
+parser code {:
+    Manejador ma = new Manejador();
+    public static LinkedList<String> erroresSintacticos=new LinkedList();
+    public static LinkedList<String> erroresSemanticos=new LinkedList();
+    public static List<Curso> cur= new ArrayList<>();
+    public static List<Estudiante> est= new ArrayList<>();
+    public static List<Integer> breakpoints=new ArrayList();
+
+
+    // Connect this parser to a scanner!
+    public parser(ScriptLex lex) {
+	    super(lex);
+	  }
+
+
+    public void unrecovered_syntax_error(Symbol s) throws java.lang.Exception {
+           String lexema=s.value.toString();
+           int columna=s.right;
+           int fila=s.left;
+          System.out.println("Error Sintactico: "+lexema+" en fila: "+fila+" y columna: "+columna);
+            String er="Error Sintactico: "+lexema+" en fila: "+fila+" y columna: "+columna;
+            erroresSintacticos.add(er);
+    }
+:}
+
+/* Terminals (tokens returned by the scanner). */
+terminal             CURSO,STUDENT,EL_ST,BUSCAR_ST,MOST_ST,MOST_CUR,SET,BREAK,DEL,PRINT,RUN,STEP,STOP,NAMES;
+terminal            NUM,COMA,PCOMA,CA,CC,MAY,MEN,PARENA,PARENC;
+
+
+
+non terminal instruccion, curso, estudiante, eliminar_estudiante, buscar_estudiante;
+non terminal mostrar_estudiante, mostrar_curso, comando_debug,instrucciones;
+non terminal comando_break, comando_print, comando_run,programa;
+
+/* Reglas de producción */
+programa ::= instrucciones;
+
+instrucciones ::= instrucciones instruccion
+                | instruccion;
+
+instruccion ::= curso
+              | estudiante
+              | eliminar_estudiante
+              | buscar_estudiante
+              | mostrar_estudiante
+              | mostrar_curso
+              | comando_debug;
+
+curso ::= CURSO PARENA NUM:n COMA NAMES:m PARENC PCOMA{:
+                                                        int id=Integer.parseInt(n.toString());
+                                                        Curso curs=null;
+                                                        for (Curso c:cur){
+                                                            if(c.getID()==id){
+                                                                curs=c;
+                                                                break;
+                                                            }
+                                                        }
+                                                        if(curs!=null){
+                                                             String we="El curso con el ID: "+id+" ya existe";
+                                                             erroresSemanticos.add(we);
+                                                        }else{
+                                                        Curso c=new Curso(id,m.toString());
+                                                        cur.add(c);
+                                                        Principal.result.setText("Cursos agregados correctamente");
+                                                        }
+                                                        :};
+
+estudiante ::= STUDENT PARENA NUM:id COMA NAMES:nom COMA NUM:idA PARENC PCOMA{:
+
+                                                                                int idS=Integer.parseInt(id.toString());
+                                                                                int idC=Integer.parseInt(idA.toString());
+                                                                                  Estudiante estu = null;
+                                                                                  Curso cu=null;
+                                                                                            for (Estudiante e : est) {
+                                                                                                if (e.getID() == idS) {
+                                                                                                    estu = e;
+                                                                                                    break; // Salir del bucle una vez que se encuentra la persona
+                                                                                                }
+                                                                                            }
+                                                                                            for (Curso c:cur){
+                                                                                                if(c.getID()==idC){
+                                                                                                    cu=c;
+                                                                                                    break;
+                                                                                                }
+                                                                                            }
+                                                                                            if (estu != null) {
+                                                                                              String w="El estudiante con el ID: "+idS+" ya existe";
+                                                                                              erroresSemanticos.add(w);
+                                                                                              if(cu==null){
+                                                                                               w="El curso con el ID: "+idC+" no existe";
+                                                                                              erroresSemanticos.add(w);
+                                                                                              }
+
+                                                                                            } else{
+                                                                                            String w="";
+                                                                                            if(cu==null){
+                                                                                                w="El curso con el ID: "+idC+" no existe";
+                                                                                                erroresSemanticos.add(w);
+                                                                                            }else{
+                                                                                                   Estudiante e=new Estudiante(idS,nom.toString(),idC);
+                                                                                                   est.add(e);
+                                                                                                   Principal.result.setText("Estudiantes agregados correctamente");
+                                                                                              }
+                                                                                            }
+
+                                                                                :};
+
+eliminar_estudiante ::= EL_ST PARENA NUM:id PARENC PCOMA{:
+                                                            int idEE=Integer.parseInt(id.toString());
+                                                final boolean[] encontrado = {false};
+
+                                               est.removeIf(estudiante -> {
+                                                   if (estudiante.getID() == idEE) {
+                                                       encontrado[0] = true;
+                                                       return true; // Eliminar si el ID coincide con idEE
+                                                   } else {
+                                                       return false; // No eliminar el estudiante
+                                                   }
+                                               });
+
+                                               if (!encontrado[0]) {
+                                                   String semanError="El estudiante con ID: "+idEE+" no existe";
+                                                   erroresSemanticos.add(semanError);
+                                               }else{
+                                                    Principal.result.setText("Estudiante con ID: "+idEE+" Eliminado correctamente");
+                                               }
+
+
+                                                        :};
+
+buscar_estudiante ::= BUSCAR_ST PARENA NUM:id PARENC PCOMA{:
+
+                                                             int idB=Integer.parseInt(id.toString());
+                                                             Estudiante estu = null;
+                                                                     for (Estudiante e : est) {
+                                                                         if (e.getID() == idB) {
+                                                                             estu = e;
+                                                                             break; // Salir del bucle una vez que se encuentra la persona
+                                                                         }
+                                                                     }
+                                                                     if (estu != null) {
+                                                                       Principal.result.setText("Estudiantes encontrado ID: "+estu.getID()+" Nombre: "+estu.getNombre());
+                                                                     } else {
+                                                                         Principal.result.setText("Estudiante no encontrado");
+                                                                     }
+                                                            :};
+
+mostrar_estudiante ::= MOST_ST PARENA PARENC PCOMA{:
+                                                StringBuilder st=new StringBuilder();
+                                                st.append("ID        NOMBRE         idCurso\n\n");
+                                                for (Estudiante e:est){
+                                                    st.append(" "+e.getID()+"           "+e.getNombre()+"               "+e.getCurso()+"\n");
+
+                                                }
+                                                Principal.result.setText(st.toString());
+                                                Principal.resultados.setText("Listado de estudiantes");
+
+                                                 :};
+
+mostrar_curso ::= MOST_CUR PARENA PARENC PCOMA{:
+                                                StringBuilder st=new StringBuilder();
+                                                st.append("ID        NOMBRE\n\n");
+                                                for (Curso c:cur){
+                                                    st.append(" "+c.getID()+"           "+c.getNombre()+"\n");
+
+                                                }
+                                                Principal.result.setText(st.toString());
+                                                Principal.resultados.setText("Listado de cursos");
+                                                :};
+
+comando_debug ::= comando_break
+                | comando_print
+                | comando_run;
+
+comando_break ::= SET BREAK NUM:num PCOMA{:
+                                      int point=Integer.parseInt(num.toString());
+                                      breakpoints.add(point);
+                                        :}
+                | DEL BREAK NUM:num PCOMA{:     int point=Integer.parseInt(num.toString());
+                                       breakpoints.remove(Integer.valueOf(point));:};
+
+comando_print ::= PRINT NUM:num PCOMA{:
+                                int point=Integer.parseInt(num.toString());
+                                            Estudiante estu = null;
+                                            for (Estudiante e : est) {
+                                                if (e.getID() == point) {
+                                                    estu = e;
+                                                    break; // Salir del bucle una vez que se encuentra la persona
+                                                }
+                                            }
+                                            if (estu != null) {
+                                                Principal.result.setText("Estudiantes encontrado ID: "+estu.getID()+" Nombre: "+estu.getNombre());
+                                            } else {
+                                                Principal.result.setText("Estudiante no encontrado");
+                                            }
+                                :};
+
+comando_run ::=RUN NUM:rupt PCOMA{:
+                           if(!breakpoints.isEmpty()){
+                            int rup=Integer.parseInt(rupt.toString());
+                            ma.run(rup);
+                           }else{
+                           String errors="No tienes puntos de ruptura agregados";
+                           erroresSemanticos.add(errors);
+                           }
+                            :}
+              | STEP PCOMA{:
+              if(!breakpoints.isEmpty()){
+              ma.step();
+              }else{
+              String errors="No tienes puntos de ruptura agregados";
+              erroresSemanticos.add(errors);
+              }
+              :}
+              | STOP PCOMA{:
+                                ma.stop();
+                            :};
+
